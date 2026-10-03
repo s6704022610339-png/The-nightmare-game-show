@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมเนื้อเรื่อง: The Nightmare Game Show</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Sarabun', sans-serif;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background-color: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            border-radius: 10px;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0); 
+        }
+
+        /* ปุ่มไอคอนเมนู (ขีด 3 ขีด) มุมขวาบน */
+        #menu-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.3em;
+            z-index: 150;
+            transition: all 0.2s;
+        }
+        #menu-btn:hover { 
+            background: rgba(255, 255, 255, 0.2); 
+            border-color: #ffcc00; 
+            color: #ffcc00;
+            transform: scale(1.05);
+        }
+
+        /* ป๊อปอัปเมนูหยุดเกม (Pause Menu) */
+        #pause-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 200;
+        }
+        #pause-menu h2 { color: #ffcc00; font-size: 2.5em; margin-bottom: 10px; }
+        .pause-btn {
+            padding: 12px 30px;
+            font-size: 1.2em;
+            font-family: 'Sarabun', sans-serif;
+            font-weight: bold;
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+            border-radius: 20px;
+            cursor: pointer;
+            width: 220px;
+            transition: all 0.2s;
+        }
+        .pause-btn:hover { background-color: white; color: black; transform: scale(1.05); }
+
+        /* เอฟเฟกต์สะดุ้งตกใจ */
+        .shake {
+            animation: shakeAnim 0.3s ease-in-out;
+        }
+        @keyframes shakeAnim {
+            0%, 100% { transform: translate3d(0, 0, 0); }
+            25% { transform: translate3d(-5px, 5px, 0); }
+            50% { transform: translate3d(5px, -5px, 0); }
+            75% { transform: translate3d(-5px, -5px, 0); }
+        }
+
+        #flash-overlay {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 5em;
+            font-weight: bold;
+            font-style: italic;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8), 3px 3px 0px rgba(0,0,0,0.7);
+            pointer-events: none; 
+            opacity: 0;
+            z-index: 80;
+        }
+
+        .show-shock {
+            animation: startlePop 0.6s ease-out forwards;
+        }
+        @keyframes startlePop {
+            0% { opacity: 0; transform: translate(-50%, 20px) scale(0.5) rotate(-10deg); }
+            30% { opacity: 1; transform: translate(-50%, -10px) scale(1.2) rotate(5deg); }
+            70% { opacity: 1; transform: translate(-50%, -10px) scale(1) rotate(0deg); }
+            100% { opacity: 0; transform: translate(-50%, -20px) scale(1) rotate(0deg); }
+        }
+
+        /* เลเยอร์แสงขาววาบ (Whiteout Transition) */
+        #whiteout-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 85;
+            transition: opacity 1.4s ease-in;
+        }
+
+        /* UI คำแนะนำให้กดค้าง */
+        #key-prompt-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            z-index: 70;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 15px;
+            border: 2px solid #555;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+
+        #key-prompt-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            animation: blinkPrompt 2s infinite;
+        }
+
+        @keyframes blinkPrompt {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* --- หน้าจอเริ่มเกม --- */
+        #title-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            transition: opacity 1s ease-in-out;
+        }
+        #title-screen h1 { 
+            font-size: 3em; 
+            margin-bottom: 10px; 
+            color: #ffcc00; 
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+            text-align: center;
+        }
+        #title-screen p { font-size: 1.2em; color: #ccc; margin-bottom: 40px; }
+
+        .start-btn {
+            padding: 15px 50px;
+            font-size: 1.5em;
+            font-family: 'Sarabun', sans-serif;
+            font-weight: bold;
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .start-btn:hover { background-color: white; color: black; box-shadow: 0 0 15px rgba(255,255,255,0.5); transform: scale(1.05); }
+
+        /* --- หน้าจอคำเตือนเนื้อหา (Warning Screen) --- */
+        #warning-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0b0b0b;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 110;
+            color: white;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            cursor: pointer;
+        }
+        #warning-screen h2 {
+            font-size: 2.5em;
+            color: #ff3333;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
+        }
+        #warning-screen p {
+            font-size: 1.3em;
+            line-height: 1.8;
+            color: #ddd;
+            max-width: 650px;
+        }
+        #warning-screen .skip-hint {
+            font-size: 0.9em;
+            color: #777;
+            margin-top: 40px;
+            animation: blink 1.5s infinite;
+        }
+
+        /* --- หน้าจอจบเกม (End Screen) --- */
+        #end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 120;
+            color: white;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        #end-screen h2 {
+            font-size: 4em;
+            color: #ff2a2a; 
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 10px rgba(255, 0, 0, 0.5);
+            text-align: center;
+        }
+        #end-screen p {
+            font-size: 1.5em;
+            color: #aaa;
+            text-align: center;
+        }
+
+        #bg-layer {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-color: #000;
+            transform: scale(1);
+        }
+
+        /* กล่องข้อความแบบสว่าง (สำหรับตอนจอขาว) */
+        .light-theme {
+            background: rgba(255, 255, 255, 0.85) !important;
+            color: black !important;
+            border: 2px solid #ccc !important;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+        }
+
+        #dialogue-box {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #555;
+            box-sizing: border-box;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 50;
+            transition: all 0.3s;
+        }
+
+        #speaker-name { font-weight: bold; color: #ffcc00; margin-bottom: 10px; font-size: 1.2em; }
+        .light-theme #speaker-name { color: #ff6600 !important; } 
+        
+        #dialogue-text { font-size: 1.1em; line-height: 1.6; }
+        
+        .instruction { font-size: 0.8em; color: #888; text-align: right; margin-top: 10px; animation: blink 1.5s infinite; }
+        .light-theme .instruction { color: #555 !important; }
+        
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        #choices-container {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            width: 60%;
+            z-index: 60;
+        }
+
+        .choice-btn {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            border: 2px solid #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-family: 'Sarabun', sans-serif;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover { background: #ffcc00; color: black; border-color: #ffcc00; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- ปุ่มไอคอนเมนู (ขีด 3 ขีด) มุมขวาบน -->
+        <button id="menu-btn" onclick="togglePause()">☰</button>
+
+        <!-- หน้าต่างเมนูหยุดเกม (Pause Menu) -->
+        <div id="pause-menu">
+            <h2>หยุดเกม</h2>
+            <button class="pause-btn" onclick="togglePause()">เล่นต่อ</button>
+            <button class="pause-btn" onclick="goToTitle()">กลับหน้าแรก</button>
+        </div>
+
+        <div id="flash-overlay">!</div>
+        
+        <!-- เลเยอร์แสงขาววาบ -->
+        <div id="whiteout-overlay"></div>
+
+        <!-- UI แนะนำให้กดค้าง -->
+        <div id="key-prompt-container">
+            <div id="key-prompt-text">[ กด W หรือ ⬆ ค้างไว้เพื่อเดินหน้า ]</div>
+        </div>
+
+        <div id="title-screen">
+            <h1>The Nightmare Game Show</h1>
+            <button class="start-btn" onclick="showWarningScreen()">เริ่มเกม</button>
+        </div>
+
+        <!-- หน้าจอคำเตือนเนื้อหา (Warning Screen) -->
+        <div id="warning-screen" onclick="startActualGame()">
+            <h2>⚠️ คำเตือนเนื้อหา (Content Warning)</h2>
+            <p>เกมนี้มีเนื้อหา ภาพ และภาษาที่มีคำหยาบคาย ความรุนแรง และบรรยากาศระทึกขวัญ<br>เพื่ออรรถรสในการรับชมและอินกับเนื้อเรื่อง ผู้เล่นควรใช้วิจารณญาณในการเล่น</p>
+            <div class="skip-hint">(คลิกหรือกด Enter เพื่อข้ามหรือเริ่มเกม...)</div>
+        </div>
+
+        <!-- หน้าจอจบเกม -->
+        <div id="end-screen">
+            <h2>จบฉากที่ 1</h2>
+            <p>โปรดติดตามตอนต่อไป...</p>
+        </div>
+
+        <div id="bg-layer"></div>
+        
+        <div id="choices-container">
+            <button class="choice-btn" onclick="checkAnswer('ก')">ก. ถูก</button>
+            <button class="choice-btn" onclick="checkAnswer('ข')">ข. ผิด</button>
+            <button class="choice-btn" onclick="checkAnswer('ค')">ค. ผัด</button>
+            <button class="choice-btn" onclick="checkAnswer('ง')">ง. ไม่มีข้อถูก</button>
+        </div>
+
+        <div id="dialogue-box" onclick="nextDialogue()">
+            <div id="speaker-name"></div>
+            <div id="dialogue-text">...</div>
+            <div class="instruction" id="click-instruction">คลิกหรือกด Enter เพื่อไปต่อ ➡</div>
+        </div>
+    </div>
+
+    <script>
+        const story = [
+            { bg: 'black', name: '', text: '. . .' },
+            { bg: 'black', name: '', text: 'ประตูเหรอ? แล้วกูมายืนอยู่ตรงนี้ตอนไหน...\nมีเรื่องให้ความสงสัยเต็มไปหมด แต่ในใจตอนนี้ไม่รู้เพราะอะไร' },
+            
+            { bg: 'ภาพประตูไม้.jpg', name: '', text: 'มือนั้นยื่นออกไปเปิดประตูเองโดยมิทันคิดอะไร' },
+            
+            { bg: 'ภาพประตูไม้.jpg', name: '', text: '', requireHoldKey: true, promptText: '[ กด W หรือ ⬆ ค้างไว้เพื่อเดินเข้าหาประตู ]' },
+            
+            // ฉากซูมมือเอื้อมเปิดประตูแบบค่อยๆ ซูม (3 วินาที)
+            { bg: 'ภาพฉากแรก.jpg', name: '', text: '', autoReachToShock: true },
+            
+            { bg: 'ภาพประตูไม้.jpg', name: 'เพื่อน 1', text: '..เจ.. ไ.เ.ม.. ไอเจมม!!', effect: 'shock' },
+            
+            { bg: 'รูปภาพห้องเรียน.jpg', name: '', text: 'เจม (ตัวเรา) สะดุ้งตื่นด้วยความตกใจจากเสียงเพื่อนที่เรียกดังลั่นในห้องเรียน' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'เพื่อน 1', text: 'นอนเ-ี้ยอะไรขนาดนั้น เดี๋ยวจารแกจะสุ่มเลขที่แล้ว เตรียมตัวโดนเหอะ.' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: '', text: 'เพื่อนเตือนด้วยความหวังดี(?) ว่าจารย์จะสุ่มถาม\nแต่ก็คงไม่โชคร้ายขนาดนั้นหรอกมั้ง...' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'ครู', text: 'เอาละเงียบ! นักเรียนทุกคนครูจะถามมม...\nดช.พิชนันต์ โจทย์ข้อนี้ตอบอะไร!' },
+            
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'ครู', text: 'ข้อใดเขียนผิด?\n(เลือกคำตอบจากปุ่มด้านบน)', showChoices: true },
+            
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'เจม', text: '(คำถามส้นตีนไรวะนั้น...)' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'ครู', text: 'ถูกต้อง! นักเรียนเก่งนะเนี่ย O-NET ภาษาไทยเต็มแน่เลยใช่ไหม.' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'เพื่อน 1', text: 'สุ่มโดนจริงๆด้วยว่ะ อิๆ สมน้ำหน้า (ทำหน้าสะใจนิดหน่อย)' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'เจม', text: 'หยุดล้อก่อนดิ้ เดี๋ยวที-ูจะขำให้ตายเลย.' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'ครู', text: 'หมดเวลาเรียนแล้ว เตรียมตัวกลับบ้านกลับช่อง ครูมีธุระรีบไปทำ.' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'หัวหน้าห้อง', text: 'นักเรียนทั้งหมด ทำความเคารพ!\n(ขอบคุณครูครับ/ค่ะ)' },
+            { bg: 'รูปภาพห้องเรียน.jpg', name: 'ครู', text: 'พอๆ ไปเลย กลับบ้านไปได้แล้ว.' },
+            
+            { bg: 'ภาพกินข้าว.jpg', name: '', text: 'พวกเราทุกคนก็แยกย้ายกลับบ้านไปตามทางจนถึงหัวค่ำ...\nระหว่างนั่งกินข้าวเย็น...' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'พ่อ', text: 'ไอบักหำน้อย.' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'เจม', text: 'มีหยังพ่อ.' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'พ่อ', text: 'ที่โรงเรียนเป็นไงบ้าง เห็นมีข่าวว่าเด็กหายตัวไปเยอะเลย.' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'เจม', text: 'เหรอ ไม่เห็นมีข่าวเลยที่โรงเรียนอะ.' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'พ่อ', text: 'หมายถึงละแวกใกล้เคียง ตอนนี้มันมีข่าวเด็กหาย พ่อเลยบอกให้ระวังตัวไว้.' },
+            { bg: 'ภาพโต๊ะกินข้าว.jpg', name: 'เจม', text: 'เครพ่อ.' },
+            { bg: 'ภาพทางเดิน.jpg', name: '', text: 'หลังกินข้าวเสร็จ ผมก็แยกตัวเดินไปที่ห้องนอนตัวเอง...' },
+            { bg: 'ภาพทางเดิน.jpg', name: '', text: 'แต่ทางไปห้องมันรู้สึกแปลกๆ...\nมันเหมือนที่ฝันตอนอยู่ในห้องเรียนเลย!' },
+            
+            { bg: 'ภาพทางเดิน.jpg', name: '', text: 'ตรงหน้าคือบันไดที่ทอดยาวขึ้นไปสู่ความมืดด้านบน...' },
+            { bg: 'ภาพทางเดิน.jpg', name: '', text: '', requireHoldKey: true, walkType: 'stairs', promptText: '[ กด W หรือ ⬆ ค้างไว้เพื่อเดินขึ้นบันได ]' },
+            
+            { bg: 'ภาพแตะประตู.jpg', name: '', text: 'มันดึงดูดให้น่าเปิดออกมากๆ เหมือนมีแรงดึงดูดบางอย่าง...' },
+            { bg: 'ภาพเปิดประตู.jpg', name: '', text: '', autoZoomWhiteout: true },
+            
+            { bg: 'white', name: '', text: 'อึก... แสงสว่างจ้าซะจนมองอะไรไม่เห็นเลย...' },
+            { bg: 'white', name: '', text: 'นี่มันที่ไหนกันวะเนี่ย... ไม่ใช่ในห้องกูนี่นา...' },
+            
+            { bg: 'white', name: 'พิธีกรเป็ด', text: 'และแล้ว!!! ผู้เข้าร่วมคนสุดท้ายของเราก็ได้มาถึงเรียบร้อยแล้วคร้าบบบ!' },
+            { bg: 'ภาพเกม.jpg', name: '', text: '*ผู้ชมส่งเสียงเฮลั่นทันทีหลังพิธีกรพูดจบ*\nเจมได้แต่งงงวยท่ามกลางแสงสปอร์ตไลท์ที่ส่องลงมา พร้อมกับผู้เข้าแข่งขันคนอื่นที่ดูตกใจกระวนกระวาย' },
+            { bg: 'ภาพเกม.jpg', name: '', text: 'แล้วจู่ๆ ก็มีกงล้ออันใหญ่ยักษ์ตกลงมาอย่างแรง!\nสร้างแรงสั่นสะเทือนไปทั้งเวที พร้อมกับเสียงเฮลั่นของผู้ชม' },
+            { bg: 'ภาพเกม.jpg', name: 'พิธีกรเป็ด', text: 'ถึงเวลาของเกมโชว์เราได้เริ่มครับ!! และเกมของวันนี้คือออ!!' },
+            { bg: 'ภาพวงล้อ.jpg', name: '', text: 'กงล้อได้หมุนด้วยความเร็วจนมองไม่ออกว่าสิ่งที่จะได้คืออะไร...' },
+            { bg: 'ภาพดีดนิ้ว.jpg', name: 'พิธีกรเป็ด', text: '(เป๊าะ!) *เสียงดีดนิ้วดังขึ้น*' },
+            { bg: '.jpg', name: '', text: 'หลังจากเสียงดีดนิ้วของพิธีกร กงล้อได้หยุดหมุนลงทันที...' },
+            { bg: 'วงล้อกำลังหมุน.jpg', name: 'พิธีกรเป็ด', text: 'ออกมาแล้วครับ!! และเกมนั้นก็คือออ!!!' },
+            
+            { isEndScene: true }
+        ];
+
+        let currentStep = 0;
+        let isWaitingForAnswer = false;
+        let currentBgPath = ''; 
+        let isPaused = false;
+        let isShowingWarning = false;
+        let warningTimer = null;
+        
+        let isWaitingForHoldKey = false;
+        let walkProgress = 0;
+        let keysPressed = {}; 
+
+        function showWarningScreen() {
+            const titleScreen = document.getElementById('title-screen');
+            titleScreen.style.opacity = '0'; 
+            
+            setTimeout(() => {
+                titleScreen.style.display = 'none'; 
+                
+                const warningScreen = document.getElementById('warning-screen');
+                warningScreen.style.display = 'flex';
+                void warningScreen.offsetWidth;
+                warningScreen.style.opacity = '1';
+                isShowingWarning = true;
+
+                warningTimer = setTimeout(() => {
+                    startActualGame();
+                }, 4500);
+
+            }, 1000); 
+        }
+
+        function startActualGame() {
+            if (!isShowingWarning) return;
+            isShowingWarning = false;
+            
+            if (warningTimer) {
+                clearTimeout(warningTimer);
+                warningTimer = null;
+            }
+
+            const warningScreen = document.getElementById('warning-screen');
+            warningScreen.style.opacity = '0';
+
+            setTimeout(() => {
+                warningScreen.style.display = 'none';
+                
+                currentStep = 0;
+                currentBgPath = '';
+                isWaitingForHoldKey = false;
+                isWaitingForAnswer = false;
+                isPaused = false;
+                keysPressed = {};
+
+                document.getElementById('dialogue-box').style.display = 'block'; 
+                updateScene(); 
+            }, 800);
+        }
+
+        function togglePause() {
+            if (isShowingWarning) return; 
+            isPaused = !isPaused;
+            const pauseMenu = document.getElementById('pause-menu');
+            if (isPaused) {
+                pauseMenu.style.display = 'flex';
+            } else {
+                pauseMenu.style.display = 'none';
+            }
+        }
+
+        function goToTitle() {
+            isPaused = false;
+            isShowingWarning = false;
+            if (warningTimer) {
+                clearTimeout(warningTimer);
+                warningTimer = null;
+            }
+
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('warning-screen').style.display = 'none';
+            document.getElementById('dialogue-box').style.display = 'none';
+            document.getElementById('key-prompt-container').style.display = 'none';
+            document.getElementById('choices-container').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'none';
+            
+            const titleScreen = document.getElementById('title-screen');
+            titleScreen.style.display = 'flex';
+            titleScreen.style.opacity = '1';
+            
+            currentStep = 0;
+            currentBgPath = '';
+            isWaitingForHoldKey = false;
+            isWaitingForAnswer = false;
+            walkProgress = 0;
+            keysPressed = {};
+        }
+
+        function updateScene() {
+            if(currentStep >= story.length) return;
+            
+            const scene = story[currentStep];
+
+            if (scene.isEndScene) {
+                endGameSequence();
+                return; 
+            }
+
+            const bgLayer = document.getElementById('bg-layer');
+            const gameContainer = document.getElementById('game-container');
+            const flashOverlay = document.getElementById('flash-overlay');
+            const dialogueBox = document.getElementById('dialogue-box');
+            const keyPromptContainer = document.getElementById('key-prompt-container');
+            const keyPromptText = document.getElementById('key-prompt-text');
+            const whiteout = document.getElementById('whiteout-overlay');
+            
+            if (currentBgPath !== scene.bg) {
+                currentBgPath = scene.bg; 
+                bgLayer.style.transition = 'none';
+                
+                if (scene.bg === 'white') {
+                    bgLayer.style.backgroundImage = 'none';
+                    bgLayer.style.backgroundColor = '#ffffff'; 
+                    bgLayer.style.transform = 'scale(1) translateY(0)';
+                    dialogueBox.classList.add('light-theme'); 
+                } else if (scene.bg === 'black') {
+                    bgLayer.style.backgroundImage = 'none';
+                    bgLayer.style.backgroundColor = '#000000';
+                    bgLayer.style.transform = 'scale(1) translateY(0)'; 
+                    dialogueBox.classList.remove('light-theme');
+                } else {
+                    bgLayer.style.backgroundColor = '#000000';
+                    bgLayer.style.backgroundImage = `url('${scene.bg}')`;
+                    dialogueBox.classList.remove('light-theme');
+                    if (scene.effect !== 'shock') {
+                        bgLayer.style.transform = 'scale(1) translateY(0)'; 
+                    }
+                }
+            }
+
+            if (scene.effect === 'shock') {
+                gameContainer.classList.remove('shake');
+                flashOverlay.classList.remove('show-shock');
+                
+                void gameContainer.offsetWidth; 
+                void flashOverlay.offsetWidth;
+                
+                gameContainer.classList.add('shake');
+                flashOverlay.classList.add('show-shock');
+            }
+
+            if (scene.autoZoomWhiteout) {
+                dialogueBox.style.display = 'none';
+                keyPromptContainer.style.display = 'none';
+                isWaitingForHoldKey = false;
+
+                bgLayer.style.transition = 'transform 1.6s ease-in';
+                bgLayer.style.transform = 'scale(2.8)';
+                
+                whiteout.style.transition = 'opacity 1.4s ease-in';
+                whiteout.style.opacity = '1';
+
+                setTimeout(() => {
+                    currentStep++;
+                    bgLayer.style.transition = 'none';
+                    updateScene();
+                    
+                    setTimeout(() => {
+                        whiteout.style.transition = 'none';
+                        whiteout.style.opacity = '0';
+                    }, 50);
+                }, 1600);
+                return;
+            }
+
+            // แก้ไขจุดนี้: บังคับเซ็ตขนาดเริ่มต้นให้เล็กลง (scale(1)) ก่อน แล้วค่อยสั่งซูมขยายใหญ่ขึ้นอย่างนุ่มนวล
+            if (scene.autoReachToShock) {
+                dialogueBox.style.display = 'none';
+                keyPromptContainer.style.display = 'none';
+                isWaitingForHoldKey = false;
+
+                // รีเซ็ตขนาดเริ่มต้นทันทีให้อยู่ที่ scale 1
+                bgLayer.style.transition = 'none';
+                bgLayer.style.transform = 'scale(1)';
+                
+                void bgLayer.offsetWidth; // บังคับให้เบราว์เซอร์รับค่ารีเซ็ต
+
+                // เริ่มอนิเมชันค่อยๆ ซูมเข้าไปที่ scale(1.8) กินเวลา 3 วินาทีเต็ม
+                bgLayer.style.transition = 'transform 3.0s ease-out';
+                bgLayer.style.transform = 'scale(1.8)';
+
+                setTimeout(() => {
+                    currentStep++;
+                    bgLayer.style.transition = 'none'; 
+                    bgLayer.style.transform = 'scale(1) translateY(0)'; 
+                    updateScene();
+                }, 3000); 
+                return;
+            }
+
+            if (scene.requireHoldKey) {
+                isWaitingForHoldKey = true;
+                walkProgress = 0; 
+                
+                dialogueBox.style.display = 'none'; 
+                keyPromptContainer.style.display = 'flex'; 
+                keyPromptText.innerText = scene.promptText || '[ กด W หรือ ⬆ ค้างไว้เพื่อเดินหน้า ]';
+                return; 
+            } else {
+                isWaitingForHoldKey = false;
+                keyPromptContainer.style.display = 'none';
+                if (!scene.showChoices) dialogueBox.style.display = 'block';
+            }
+
+            const nameBox = document.getElementById('speaker-name');
+            if(scene.name !== '') {
+                nameBox.style.display = 'block';
+                nameBox.innerText = scene.name;
+            } else {
+                nameBox.style.display = 'none'; 
+            }
+            
+            if(scene.text === '') {
+                dialogueBox.style.display = 'none';
+            } else {
+                document.getElementById('dialogue-text').innerHTML = scene.text.replace(/\n/g, '<br>');
+            }
+            
+            if(scene.showChoices) {
+                isWaitingForAnswer = true;
+                document.getElementById('choices-container').style.display = 'flex';
+                document.getElementById('click-instruction').style.display = 'none';
+            } else {
+                document.getElementById('choices-container').style.display = 'none';
+                document.getElementById('click-instruction').style.display = 'block';
+            }
+        }
+
+        function endGameSequence() {
+            document.getElementById('dialogue-box').style.display = 'none';
+            document.getElementById('key-prompt-container').style.display = 'none';
+            document.getElementById('choices-container').style.display = 'none';
+            document.getElementById('bg-layer').style.backgroundImage = 'none'; 
+            document.getElementById('bg-layer').style.backgroundColor = '#000000';
+            
+            const endScreen = document.getElementById('end-screen');
+            endScreen.style.display = 'flex';
+            
+            void endScreen.offsetWidth; 
+            endScreen.style.opacity = '1';
+
+            setTimeout(() => {
+                endScreen.style.opacity = '0';
+                
+                setTimeout(() => {
+                    endScreen.style.display = 'none';
+                    goToTitle(); 
+                }, 1000);
+                
+            }, 5000); 
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (isShowingWarning) {
+                if (event.code === 'Enter' || event.code === 'NumpadEnter' || event.code === 'Space') {
+                    startActualGame();
+                }
+                return;
+            }
+
+            if (isPaused) return; 
+
+            keysPressed[event.code] = true; 
+
+            if (event.code === 'Enter' || event.code === 'NumpadEnter') {
+                nextDialogue();
+            }
+        });
+        
+        document.addEventListener('keyup', function(event) {
+            keysPressed[event.code] = false;
+        });
+
+        function gameLoop() {
+            if (!isPaused && !isShowingWarning) {
+                const scene = story[currentStep];
+
+                if (isWaitingForHoldKey && scene) {
+                    if (keysPressed['KeyW'] || keysPressed['ArrowUp']) {
+                        document.getElementById('key-prompt-container').style.display = 'none';
+                        
+                        walkProgress += 0.3; 
+                        
+                        let currentScale = 1 + (walkProgress / 100) * 0.4; 
+                        
+                        if (scene.walkType === 'stairs') {
+                            let stairBob = Math.sin(walkProgress * 0.35) * 6;
+                            let climbShift = (walkProgress / 100) * 35; 
+                            document.getElementById('bg-layer').style.transform = `scale(${currentScale}) translateY(${climbShift - stairBob}px)`;
+                        } else {
+                            let bobbing = Math.sin(walkProgress * 0.4) * 3; 
+                            document.getElementById('bg-layer').style.transform = `scale(${currentScale}) translateY(${-bobbing}px)`;
+                        }
+
+                        if (walkProgress >= 100) {
+                            isWaitingForHoldKey = false;
+                            keysPressed = {}; 
+                            
+                            currentStep++;
+                            updateScene();
+                        }
+                    }
+                }
+            }
+            requestAnimationFrame(gameLoop); 
+        }
+
+        requestAnimationFrame(gameLoop);
+
+        function nextDialogue() {
+            if(isPaused || isWaitingForAnswer || isWaitingForHoldKey) return; 
+            
+            currentStep++;
+            if(currentStep < story.length) {
+                updateScene();
+            }
+        }
+
+        function checkAnswer(answer) {
+            if (answer === 'ค') {
+                isWaitingForAnswer = false;
+                document.getElementById('choices-container').style.display = 'none';
+                currentStep++; 
+                updateScene();
+            } else {
+                alert('ตอบผิด! กลับไปอ่านหนังสือมาใหม่ละนักเรียน!');
+            }
+        }
+    </script>
+</body>
+</html>
